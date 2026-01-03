@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+
+# Virtual environments
+venv/
+env/
+
+# PyTorch / ML artifacts (optional)
+*.pt
+*.pkl
+
+# Docker
+postgres_data/
+*.log
+
+# VSCode
+.vscode/
