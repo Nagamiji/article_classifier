@@ -694,22 +694,8 @@ ENVIRONMENT=production docker-compose -f docker-compose.prod.yml up -d
 
 ## **🧪 Testing**
 
-### **Run Test Suite**
-```bash
-# Test API endpoints
-python test_api.py
-
-# Test predictions
-python test_predictions.py
-
-# Complete demo
-python complete_demo.py
-```
-
 ### **Manual Testing**
 ```bash
-# Test sequence
-./test_sequence.sh
 
 # Individual tests
 curl http://localhost:8000/health
@@ -800,7 +786,7 @@ MIT License - see LICENSE file for details
 ---
 
 ## **👥 Authors**
-- **Your Name** - Initial development
+- **Kana** - Initial development
 - **Contributors** - Code improvements and bug fixes
 
 ---
