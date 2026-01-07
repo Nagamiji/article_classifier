@@ -9,6 +9,7 @@ __pycache__/
 
 # Virtual environments
 venv/
+my_venv/
 env/
 
 # PyTorch / ML artifacts (optional)
