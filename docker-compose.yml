@@ -1,17 +1,89 @@
-version: "3.9"
+version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
-    container_name: article_postgres
-    restart: always
-    env_file:
-      - .env
+    image: postgres:15-alpine
+    container_name: article-classifier-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # USE ENV VARIABLE
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "5432:5432"  # ⚠️ REMOVE for production - internal only
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]  # FIXED
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+    # Add security
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: article-classifier-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # ⚠️ REMOVE - Let nginx handle
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      ENVIRONMENT: production  # ⚠️ CHANGE to production
+      DEBUG: "False"  # ⚠️ CHANGE to False
+      LOG_LEVEL: INFO
+      MODEL_CACHE_DIR: /app/ml/artifacts
+      MODEL_TYPE: huggingface
+      API_V1_PREFIX: /api/v1
+      CORS_ORIGINS: https://your-domain.com  # ⚠️ SET your domain
+      # Add security headers
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-here}
+    volumes:
+      # ⚠️ REMOVE development mounts
+      # - ./backend/app:/app/app  # REMOVE
+      - ./backend/app/ml/artifacts:/app/ml/artifacts:ro
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    command: >
+      sh -c "gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000"
+    # Add security
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+
+  # ⚠️ ADD NGINX SERVICE
+  nginx:
+    image: nginx:alpine
+    container_name: article-classifier-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # For SSL certificates
+      - ./frontend:/usr/share/nginx/html:ro  # Serve frontend
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Khmer Text Classifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="dark-toggle" id="dark-toggle">
+      <span>🌙</span>
+    </div>
+
+    <div class="header">
+      <h1>Khmer Text Classifier</h1>
+      <p>Classify Khmer news/articles into topics using AI</p>
+    </div>
+
+    <div class="card">
+      <textarea id="single-text" placeholder="បញ្ចូលអត្ថបទខ្មែរនៅទីនេះ... (អតិបរមា ៥១២ ពាក្យ)"></textarea>
+
+      <div class="controls">
+        <div class="button-container">
+          <button id="predict-single">Predict Topic</button>
+        </div>
+        <div class="word-count" id="word-count">0 / 512 words</div>
+      </div>
+
+      <div class="loader" id="loader-single">Predicting...</div>
+
+      <div id="single-result" class="result" style="display:none;">
+        <strong>Predicted Topic:</strong> 
+        <span id="pred-label"></span>
+
+        <div class="feedback-buttons">
+          <span class="feedback-btn" id="like-btn" title="Good prediction">👍</span>
+          <span class="feedback-btn" id="dislike-btn" title="Bad prediction">👎</span>
+        </div>
+        <p id="feedback-status">No feedback given yet</p>
+
+        <h3>Probability Distribution</h3>
+        <table id="prob-table"></table>
+      </div>
+    </div>
+
+    <div class="card history">
+      <h2>Recent Predictions</h2>
+      <div class="loader" id="loader-history">Loading...</div>
+      <table id="history-table" style="display:none;">
+        <thead>
+          <tr><th>Time</th><th>Text Preview</th><th>Predicted Topic</th><th>Feedback</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="no-history">No predictions yet.</p>
+    </div>
+  </div>
+
+  <!-- External JavaScript -->
+  <script src="script.js" defer></script>
+</body>
+</html>
