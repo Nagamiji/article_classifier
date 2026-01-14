@@ -87,6 +87,13 @@ document.getElementById('predict-single').addEventListener('click', async () => 
     const label = result.label_classified;
     document.getElementById('pred-label').textContent = 
       `${LABEL_MAPPING[label] || label} (${LABEL_ENGLISH[label] || label})`;
+
+    // Display accuracy (confidence)
+    const accuracy = result.accuracy;
+    document.getElementById('pred-accuracy').textContent =
+      accuracy !== null && accuracy !== undefined
+        ? `${accuracy.toFixed(2)} %`
+        : 'N/A';
     
     // Store prediction ID for feedback
     document.getElementById('single-result').dataset.predictionId = result.id;
@@ -225,6 +232,14 @@ async function loadHistory() {
         // Predicted topic with correct label
         const label = pred.label_classified;
         tr.insertCell().textContent = LABEL_ENGLISH[label] || label;
+
+        // Accuracy column
+        const accuracyCell = tr.insertCell();
+        accuracyCell.textContent =
+          pred.accuracy !== null && pred.accuracy !== undefined
+            ? `${pred.accuracy.toFixed(2)} %`
+            : 'N/A';
+
         
         // Feedback
         const feedbackCell = tr.insertCell();

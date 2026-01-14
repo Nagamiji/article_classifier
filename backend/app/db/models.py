@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Numeric, func
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -10,11 +10,16 @@ class Prediction(Base):
     id = Column(Integer, primary_key=True, index=True)
     text_input = Column(Text, nullable=False)
     label_classified = Column(String(255), nullable=False)
+    accuracy = Column(Numeric(5, 2), nullable=True)  # prediction accuracy (%)
     feedback = Column(Boolean, default=None, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     def __repr__(self):
-        return f"<Prediction(id={self.id}, label='{self.label_classified}')>"
+        return (
+            f"<Prediction(id={self.id}, label='{self.label_classified}', "
+            f"accuracy={self.accuracy})>"
+        )
+    
 
 
 class ErrorLog(Base):

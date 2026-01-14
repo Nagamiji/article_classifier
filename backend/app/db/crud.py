@@ -1,10 +1,18 @@
 from sqlalchemy.orm import Session
 from app.db import models
+from decimal import Decimal
 
-def create_prediction(db: Session, text_input: str, label_classified: str, feedback: bool = None):
+def create_prediction(
+    db: Session,
+    text_input: str,
+    label_classified: str,
+    accuracy: float,
+    feedback: bool = None
+):
     prediction = models.Prediction(
         text_input=text_input,
         label_classified=label_classified,
+        accuracy=Decimal(str(accuracy)),
         feedback=feedback
     )
     db.add(prediction)
