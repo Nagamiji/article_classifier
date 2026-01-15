@@ -10,7 +10,7 @@ toggle.addEventListener('click', () => {
 
 // ==================== CONFIGURATION ====================
 const MAX_WORDS = 512;
-const API_BASE_URL = 'http://localhost:8000/api/v1'; // Your backend API
+const API_BASE_URL = 'http://127.0.0.1:8000/api/v1'; // Your backend API
 const textarea = document.getElementById('single-text');
 const wordCount = document.getElementById('word-count');
 
@@ -87,6 +87,13 @@ document.getElementById('predict-single').addEventListener('click', async () => 
     const label = result.label_classified;
     document.getElementById('pred-label').textContent = 
       `${LABEL_MAPPING[label] || label} (${LABEL_ENGLISH[label] || label})`;
+
+    // Display accuracy (confidence)
+    const accuracy = result.accuracy;
+    document.getElementById('pred-accuracy').textContent =
+      accuracy !== null && accuracy !== undefined
+        ? `${accuracy.toFixed(2)} %`
+        : 'N/A';
     
     // Store prediction ID for feedback
     document.getElementById('single-result').dataset.predictionId = result.id;
@@ -225,6 +232,14 @@ async function loadHistory() {
         // Predicted topic with correct label
         const label = pred.label_classified;
         tr.insertCell().textContent = LABEL_ENGLISH[label] || label;
+
+        // Accuracy column
+        const accuracyCell = tr.insertCell();
+        accuracyCell.textContent =
+          pred.accuracy !== null && pred.accuracy !== undefined
+            ? `${pred.accuracy.toFixed(2)} %`
+            : 'N/A';
+
         
         // Feedback
         const feedbackCell = tr.insertCell();
@@ -345,3 +360,82 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(statusDiv);
   }
 });
+
+// --- Khmer word count + 512-limit enforcement via backend /segment ---
+
+async function fetchKhmerWordCount(text, maxWords = 512) {
+  try {
+    const res = await fetch('/api/v1/segment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text_input: text, max_words: maxWords })
+    });
+
+    if (!res.ok) {
+      console.error('Segment endpoint returned error', await res.text());
+      return null;
+    }
+
+    // { khmer_word_count, khmer_words, truncated, cleaned_text }
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch khmer word count', err);
+    return null;
+  }
+}
+
+// Simple debounce to avoid calling API on every keystroke instantly
+function debounce(fn, delay = 250) {
+  let t = null;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+
+// Wire to your HTML elements
+const txtEl = document.querySelector('#single-text');
+const wordCountEl = document.querySelector('#word-count');
+
+if (txtEl) {
+  const onInput = debounce(async () => {
+    const text = txtEl.value || '';
+    const payload = await fetchKhmerWordCount(text, 512);
+
+    if (!payload) return;
+
+    // Update word count UI (Khmer word count based on backend)
+    const count = payload.khmer_word_count ?? 0;
+    if (wordCountEl) wordCountEl.textContent = `${count} / 512 words`;
+
+    // If backend says truncated, enforce 512 words by replacing textarea value
+    // Use cleaned_text (already cleaned) + khmer_words to rebuild the truncated text.
+    if (payload.truncated) {
+      // If your backend returns khmer_words list of clusters/words, join them.
+      // This will keep only the first 512 Khmer words/clusters.
+      if (Array.isArray(payload.khmer_words) && payload.khmer_words.length > 0) {
+        const truncatedText = payload.khmer_words.join(' ');
+        // Only set if different to prevent cursor jump too often
+        if (txtEl.value !== truncatedText) {
+          const prevPos = txtEl.selectionStart;
+          txtEl.value = truncatedText;
+          // Put cursor at end (simplest + stable)
+          txtEl.selectionStart = txtEl.selectionEnd = Math.min(prevPos, txtEl.value.length);
+        }
+      } else if (typeof payload.cleaned_text === 'string' && payload.cleaned_text.length > 0) {
+        // fallback: if khmer_words missing, at least replace with cleaned_text
+        txtEl.value = payload.cleaned_text;
+      }
+
+      // Optional: add a visual warning style if you want
+      txtEl.classList.add('limit-reached');
+    } else {
+      txtEl.classList.remove('limit-reached');
+    }
+  }, 250);
+
+  txtEl.addEventListener('input', onInput);
+
+  // Run once on load (in case textarea has prefilled text)
+  onInput();
+}

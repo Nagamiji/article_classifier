@@ -13,7 +13,9 @@ services:
       - "5432:5432"  # ⚠️ REMOVE for production - internal only
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    tmpfs:
+      - /var/run/postgresql   # runtime files, lock, socket (in memory, writable)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]  # FIXED
       interval: 10s
@@ -25,7 +27,7 @@ services:
     # Add security
     security_opt:
       - no-new-privileges:true
-    read_only: true
+    # read_only: true
 
   backend:
     build:

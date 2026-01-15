@@ -9,12 +9,37 @@ from app.ml.model import classifier
 from app.db.schemas import PredictionResponse
 import logging
 
+from app.ml import preprocessing
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # Schema for feedback request
 class FeedbackRequest(BaseModel):
     feedback: bool
+
+#  Add new /segment endpoint and preprocessing pipeline 
+class SegmentRequest(BaseModel):
+    text_input: str
+    max_words: int = 512
+
+@router.post("/segment")
+def segment_text(payload: SegmentRequest):
+    """
+    Endpoint: /api/v1/segment
+    Returns Khmer word count, up to `max_words` Khmer clusters, and a truncated flag.
+    """
+    try:
+        cleaned = preprocessing.remove_non_khmer_english_and_punct(payload.text_input)
+        result = preprocessing.count_khmer_words(cleaned, max_words=payload.max_words)
+        return {
+            "khmer_word_count": result["count"],
+            "khmer_words": result["words"],
+            "truncated": result["truncated"],
+            "cleaned_text": cleaned,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/predict", response_model=PredictionResponse)
@@ -25,14 +50,18 @@ def predict_article(
 ):
     """Make a prediction for article text"""
     try:
-        # Get prediction from ML model
-        category, confidence = classifier.predict(text_input)
+        # Preprocess for model (cleaning only, NO segmentation)
+        processed_text = preprocessing.preprocess_for_model(text_input)
+
+        # Get prediction from ML model using processed text
+        category, confidence = classifier.predict(processed_text)
        
-        # Save to database
+        # Save to database (store original text_input for traceability)
         db_prediction = crud.create_prediction(
             db=db,
             text_input=text_input,
             label_classified=category,
+            accuracy=confidence,
             feedback=feedback
         )
        

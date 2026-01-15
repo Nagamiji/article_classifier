@@ -12,7 +12,8 @@ class PredictionCreate(PredictionBase):
 class PredictionResponse(BaseModel):
     id: int
     text_input: str
-    label_classified: str  # This comes from model prediction
+    label_classified: str  
+    accuracy: float # This comes from model prediction
     feedback: Optional[bool]
     created_at: datetime
     
