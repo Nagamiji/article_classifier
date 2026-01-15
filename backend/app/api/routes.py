@@ -61,6 +61,7 @@ def predict_article(
             db=db,
             text_input=text_input,
             label_classified=category,
+            accuracy=confidence,
             feedback=feedback
         )
        
