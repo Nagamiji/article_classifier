@@ -11,7 +11,7 @@ from app.ml.model import classifier
 from app.db.schemas import PredictionResponse
 from app.ml import preprocessing
 
-router = APIRouter()
+router = APIRouter(tags=['api'])
 logger = logging.getLogger(__name__)
 
 # ────────────────────────────────────────────────
