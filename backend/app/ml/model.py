@@ -63,7 +63,7 @@ class ArticleClassifier:
                     logger.info("Loading Hugging Face model with safetensors...")
                     
                     # Load tokenizer
-                    self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+                    self.tokenizer = AutoTokenizer.from_pretrained(model_path,use_fast=False)
                     
                     # Load model with safetensors
                     self.model = AutoModelForSequenceClassification.from_pretrained(

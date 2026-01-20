@@ -58,6 +58,7 @@ toggle.addEventListener('click', () => {
 // ==================== DOM ELEMENTS ====================
 const textarea = document.getElementById('single-text');
 const wordCount = document.getElementById('word-count');
+const predictBtn = document.getElementById('predict-single');
 
 // ==================== KHMER WORD COUNTING WITH BACKEND ====================
 let wordCountTimeout = null;
@@ -75,6 +76,7 @@ async function countKhmerWords(text) {
   }
 
   try {
+    console.log(`Counting words for text length: ${text.length}`);
     const response = await fetch(`${API_BASE_URL}/segment`, {
       method: 'POST',
       headers: {
@@ -87,7 +89,7 @@ async function countKhmerWords(text) {
     });
 
     if (!response.ok) {
-      console.warn('Segment API failed, falling back to simple counting');
+      console.warn('Segment API failed, status:', response.status);
       // Fallback to simple space-based counting
       const words = text.trim().split(/\s+/).filter(w => w.length > 0);
       return { 
@@ -99,6 +101,7 @@ async function countKhmerWords(text) {
     }
 
     const result = await response.json();
+    console.log('Word count result:', result);
     return {
       count: result.khmer_word_count,
       truncated: result.truncated,
@@ -107,7 +110,7 @@ async function countKhmerWords(text) {
     };
 
   } catch (error) {
-    console.warn('Error counting words, using fallback:', error);
+    console.warn('Error counting words:', error);
     // Fallback to simple counting
     const words = text.trim().split(/\s+/).filter(w => w.length > 0);
     return { 
@@ -162,7 +165,7 @@ async function updateWordCount(immediate = false) {
           }
         }
       } else if (result.count > MAX_WORDS) {
-        // Extra safety check - should not happen if backend works correctly
+        // Extra safety check
         wordCount.classList.add('word-limit-warning');
         
         // Reconstruct text from first MAX_WORDS words
@@ -188,17 +191,14 @@ async function updateWordCount(immediate = false) {
   if (immediate) {
     await doCount();
   } else {
-    // For typing, use shorter debounce (150ms instead of 300ms)
+    // For typing, use shorter debounce
     wordCountTimeout = setTimeout(doCount, 150);
   }
 }
 
 // Attach event listeners
 textarea.addEventListener('input', () => updateWordCount(false));
-
-// Handle paste events immediately for real-time feel
 textarea.addEventListener('paste', (e) => {
-  // Let the paste happen first
   setTimeout(() => updateWordCount(true), 10);
 });
 
@@ -206,24 +206,28 @@ textarea.addEventListener('paste', (e) => {
 updateWordCount(true);
 
 // ==================== PREDICTION FUNCTION ====================
-document.getElementById('predict-single').addEventListener('click', async () => {
+predictBtn.addEventListener('click', async () => {
   const text = textarea.value.trim();
   if (!text) {
     alert('⚠️ Please enter some text');
     return;
   }
 
-  // Check word count before predicting
   if (currentWordCount === 0) {
     alert('⚠️ Please enter some Khmer or English text');
     return;
   }
 
+  // Disable button to prevent multiple clicks
+  predictBtn.disabled = true;
+  predictBtn.textContent = 'Predicting...';
+  
   // Show loader
   document.getElementById('loader-single').style.display = 'block';
   document.getElementById('single-result').style.display = 'none';
 
   try {
+    console.log('Sending prediction request to:', `${API_BASE_URL}/predict`);
     const response = await fetch(`${API_BASE_URL}/predict`, {
       method: 'POST',
       headers: {
@@ -235,12 +239,22 @@ document.getElementById('predict-single').addEventListener('click', async () => 
       })
     });
 
+    console.log('Response status:', response.status);
+    
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || `HTTP error ${response.status}`);
+      let errorMessage = `HTTP error ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        // If response is not JSON, get text
+        errorMessage = await response.text() || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
+    console.log('Prediction result:', result);
     
     const label = result.label_classified;
     const labelText = LABEL_MAPPING[label] || label;
@@ -292,9 +306,33 @@ document.getElementById('predict-single').addEventListener('click', async () => 
 
   } catch (error) {
     console.error('Prediction error:', error);
-    alert(`❌ Error: ${error.message}\n\nAPI endpoint: ${API_BASE_URL}/predict\nEnvironment: ${CONFIG.ENVIRONMENT}\n\nPlease check:\n• Backend is running\n• Database is connected\n• Model is loaded`);
+    
+    // More detailed error message
+    const errorDetails = `
+❌ Prediction Failed!
+
+Error: ${error.message}
+
+API: ${API_BASE_URL}/predict
+Mode: ${CONFIG.ENVIRONMENT}
+
+Possible issues:
+• Backend API not running
+• API route mismatch (check /api/v1 vs /api)
+• Model loading issue
+• Database connection problem
+
+Check Docker containers:
+$ docker compose ps
+$ docker compose logs api
+
+Make sure backend has /api/v1 endpoints!`;
+    
+    alert(errorDetails);
   } finally {
     document.getElementById('loader-single').style.display = 'none';
+    predictBtn.disabled = false;
+    predictBtn.textContent = 'Predict Topic';
     loadHistory();
   }
 });
@@ -308,6 +346,7 @@ async function sendFeedback(feedbackValue) {
   }
 
   try {
+    console.log('Sending feedback for prediction:', predictionId);
     const response = await fetch(`${API_BASE_URL}/predictions/${predictionId}/feedback`, {
       method: 'POST',
       headers: {
@@ -319,8 +358,14 @@ async function sendFeedback(feedbackValue) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || `HTTP ${response.status}`);
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        errorMessage = await response.text() || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     // Update UI
@@ -341,7 +386,7 @@ async function sendFeedback(feedbackValue) {
 
   } catch (error) {
     console.error('Feedback error:', error);
-    alert(`❌ Error sending feedback: ${error.message}`);
+    alert(`❌ Error sending feedback: ${error.message}\n\nCheck if prediction ID ${predictionId} exists.`);
   }
 }
 
@@ -365,10 +410,23 @@ async function loadHistory() {
   noHistory.style.display = 'none';
 
   try {
+    console.log('Loading history from:', `${API_BASE_URL}/predictions`);
     const response = await fetch(`${API_BASE_URL}/predictions`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    console.log('History response status:', response.status);
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        errorMessage = await response.text() || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
 
     const predictions = await response.json();
+    console.log(`Loaded ${predictions.length} predictions`);
 
     if (predictions.length === 0) {
       noHistory.style.display = 'block';
@@ -426,7 +484,7 @@ async function loadHistory() {
 
   } catch (error) {
     console.error('History load error:', error);
-    noHistory.textContent = '❌ Error loading history. Is the backend running?';
+    noHistory.textContent = `❌ Error loading history: ${error.message}`;
     noHistory.style.display = 'block';
     noHistory.style.color = '#ef4444';
   } finally {
@@ -437,6 +495,7 @@ async function loadHistory() {
 // Global function for feedback buttons in history table
 window.giveFeedback = async function(predictionId, feedbackValue) {
   try {
+    console.log(`Giving feedback ${feedbackValue ? '👍' : '👎'} for prediction ${predictionId}`);
     const response = await fetch(`${API_BASE_URL}/predictions/${predictionId}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -455,77 +514,107 @@ window.giveFeedback = async function(predictionId, feedbackValue) {
     
   } catch (error) {
     console.error(error);
-    alert(`❌ Feedback failed: ${error.message}`);
+    alert(`❌ Feedback failed: ${error.message}\n\nPrediction ID: ${predictionId}`);
   }
 };
+
+// ==================== API HEALTH CHECK ====================
+async function checkApiHealth() {
+  try {
+    console.log('Checking API health at:', `${API_BASE_URL}/health`);
+    const response = await fetch(`${API_BASE_URL}/health`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ API Health check:', data);
+      
+      // Create or update status indicator
+      let statusEl = document.getElementById('api-status');
+      if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'api-status';
+        statusEl.style.cssText = `
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          padding: 6px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: bold;
+          z-index: 1000;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        `;
+        document.body.appendChild(statusEl);
+      }
+      
+      if (data.status === 'healthy' && data.model_loaded) {
+        statusEl.textContent = '✅ API & Model Ready';
+        statusEl.style.background = '#10b981';
+        statusEl.style.color = 'white';
+      } else if (data.status === 'healthy') {
+        statusEl.textContent = '⚠️ API Ready (No Model)';
+        statusEl.style.background = '#f59e0b';
+        statusEl.style.color = 'white';
+      } else {
+        statusEl.textContent = '❌ API Issues';
+        statusEl.style.background = '#ef4444';
+        statusEl.style.color = 'white';
+      }
+      
+      return true;
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.warn('⚠️ API Health check failed:', error);
+    
+    // Show warning only once
+    if (!sessionStorage.getItem('api-health-warning')) {
+      setTimeout(() => {
+        const warning = `
+⚠️ API Connection Issue
+
+Unable to reach: ${API_BASE_URL}/health
+
+Possible causes:
+• Backend container not running
+• Port 8000 not exposed
+• API routes mismatch (/api vs /api/v1)
+• Network issues
+
+Check with:
+$ docker compose ps
+$ docker compose logs api`;
+        alert(warning);
+      }, 2000);
+      sessionStorage.setItem('api-health-warning', 'shown');
+    }
+    return false;
+  }
+}
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🚀 Khmer Text Classifier initialized');
   console.log(`📡 Environment: ${CONFIG.ENVIRONMENT}`);
-  console.log(`🔗 API Base URL: ${CONFIG.API_BASE_URL}`);
+  console.log(`🔗 API Base URL: ${API_BASE_URL}`);
+  
+  // Check API health
+  checkApiHealth();
   
   // Load prediction history
   loadHistory();
 
-  // Check API health & show status
-  fetch(`${API_BASE_URL}/health`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === 'healthy') {
-        const el = document.getElementById('api-status');
-        if (el) {
-          el.textContent = '✅ API Connected';
-          el.style.background = '#10b981';
-          el.style.color = 'white';
-          el.style.padding = '4px 8px';
-          el.style.borderRadius = '4px';
-          el.style.fontSize = '12px';
-        }
-        console.log('✅ Backend API is healthy');
-        console.log('✅ Khmer word segmentation with khmernltk is enabled!');
-        
-        // Log model info
-        if (data.model_loaded) {
-          console.log('✅ ML Model is loaded and ready');
-        }
-      }
-    })
-    .catch(err => {
-      console.warn('⚠️ API not reachable:', err);
-      const el = document.getElementById('api-status');
-      if (el) {
-        el.textContent = '❌ API Unavailable';
-        el.style.background = '#ef4444';
-        el.style.color = 'white';
-        el.style.padding = '4px 8px';
-        el.style.borderRadius = '4px';
-        el.style.fontSize = '12px';
-      }
-      
-      // One-time warning (don't spam user on every page load)
-      if (!sessionStorage.getItem('api-warning-shown')) {
-        setTimeout(() => {
-          alert(`⚠️ Cannot reach backend API\n\nAPI URL: ${API_BASE_URL}\nEnvironment: ${CONFIG.ENVIRONMENT}\n\nPlease check:\n✓ Backend container is running\n✓ Port mapping is correct\n✓ Nginx proxy is configured\n\nRun: docker-compose up -d`);
-        }, 1000);
-        sessionStorage.setItem('api-warning-shown', 'true');
-      }
-    });
+  // Periodic health check every 30 seconds
+  setInterval(checkApiHealth, 30000);
 });
 
 // ==================== UTILITY FUNCTIONS ====================
-
-/**
- * Format timestamp for display
- */
 function formatTimestamp(timestamp) {
   const date = new Date(timestamp);
   return date.toLocaleString();
 }
 
-/**
- * Truncate text for preview
- */
 function truncateText(text, maxLength = 30) {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '…';
