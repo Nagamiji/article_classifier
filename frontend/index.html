@@ -55,21 +55,24 @@
 
     <div class="card history">
       <h2>Recent Predictions</h2>
+      
       <div class="loader" id="loader-history">Loading...</div>
-      <table id="history-table" style="display:none;">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Text Preview</th>
-            <th>Predicted Topic</th>
-            <th>Accuracy</th>
-            <th>Feedback</th>
-          </tr>
+      <div class="table-container">
+        <table id="history-table" style="display:none;">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Text Preview</th>
+              <th>Predicted Topic</th>
+              <th>Accuracy</th>
+              <th>Feedback</th>
+            </tr>
 
-        </thead>
-        <tbody></tbody>
-      </table>
-      <p id="no-history">No predictions yet.</p>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="no-history">No predictions yet.</p>
+      </div>
     </div>
   </div>
 
