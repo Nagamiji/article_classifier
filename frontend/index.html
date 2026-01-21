@@ -55,25 +55,47 @@
 
     <div class="card history">
       <h2>Recent Predictions</h2>
+      
+      <!-- Pagination Controls -->
+      <div class="pagination-controls" id="pagination-controls" style="display: none;">
+        <button id="prev-page" class="pagination-btn" disabled>← Previous</button>
+        <div class="page-info-container">
+          <span id="page-info">Page 1 of 1</span>
+          <div class="page-jump">
+            <input type="number" id="page-input" min="1" value="1" class="page-input">
+            <button id="go-to-page" class="pagination-btn small">Go</button>
+          </div>
+        </div>
+        <button id="next-page" class="pagination-btn" disabled>Next →</button>
+      </div>
+      
+      <!-- Refresh Button -->
+      <div class="refresh-container">
+        <button id="refresh-history" class="refresh-btn" title="Refresh history">↻ Refresh</button>
+      </div>
+      
       <div class="loader" id="loader-history">Loading...</div>
-      <table id="history-table" style="display:none;">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Text Preview</th>
-            <th>Predicted Topic</th>
-            <th>Accuracy</th>
-            <th>Feedback</th>
-          </tr>
-
-        </thead>
-        <tbody></tbody>
-      </table>
+      
+      <div class="table-container">
+        <table id="history-table" style="display:none;">
+          <thead>
+            <tr>
+              <th class="time-col">Time</th>
+              <th class="text-col">Text Preview</th>
+              <th class="topic-col">Topic</th>
+              <th class="acc-col">Accuracy</th>
+              <th class="feedback-col">Feedback</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      
       <p id="no-history">No predictions yet.</p>
     </div>
   </div>
 
   <!-- External JavaScript -->
-  <script src="script.js" defer></script>
+  <script src="script.js?v=20260121" defer></script>
 </body>
 </html>
