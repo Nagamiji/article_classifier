@@ -17,19 +17,7 @@ CREATE TABLE IF NOT EXISTS error_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-<<<<<<< Updated upstream
--- 3. Indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_predictions_created
-ON predictions(created_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_predictions_feedback
-ON predictions(feedback);
-
-CREATE INDEX IF NOT EXISTS idx_error_logs_created
-ON error_logs(created_at DESC);
-=======
 -- 3. Add some indexes for better performance
 CREATE INDEX idx_predictions_created ON predictions(created_at DESC);
 CREATE INDEX idx_predictions_feedback ON predictions(feedback);
 CREATE INDEX idx_error_logs_created ON error_logs(created_at DESC);  
->>>>>>> Stashed changes
